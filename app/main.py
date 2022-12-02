@@ -15,6 +15,18 @@ def start(message):
     bot.send_message(message.chat.id, text='Привет! Выбери город из списка', reply_markup=keyboard)
 
 
+# обработка введенных пользователем данных
+@bot.message_handler(content_types=['text'])
+def func(message):
+    if message.text == "Москва":
+        bot.send_message(message.chat.id, text='Вы выбрали Москва')
+    elif message.text == "Питер":
+        bot.send_message(message.chat.id, text='Вы выбрали Питер')
+    elif message.text == "Другой":
+        bot.send_message(message.chat.id, text='Извини. Пока мало компетенций для совета по другим городам :(')
+    else:
+        bot.send_message(message.chat.id, text="Не понял тебя. Выбери город из меню и все будет чики-пуки")
+
 bot.polling(none_stop=True)
 
 
