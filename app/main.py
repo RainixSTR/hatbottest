@@ -4,12 +4,25 @@ from bs4 import BeautifulSoup
 
 bot = telebot.TeleBot('5607061999:AAHJMd0sdmwHf7VumXkoMEt1vfXQS4JkUpQ')
 
+
 # парсинг сайта с погодой
 def get_data(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.content, 'html.parser')
     data = soup.find('span', {'class': 'value colorize-server-side'}).text[:-1]
     return data
+
+
+# генерация совета
+def get_advice(url):
+    temp = int(get_data(url))
+    if temp <= -6:
+        predict = 'Думаю, сегодня точно стоит надеть шапку'
+    elif temp <= -2:
+        predict = 'Пока терпимо, но тут уже смотри сам'
+    else:
+        predict = 'Тепло! Можно походить без шапочки ;)'
+    return predict
 
 
 # генерация кнопочного меню в чате
@@ -34,6 +47,8 @@ def func(message):
         bot.send_message(message.chat.id, text='Извини. Пока мало компетенций для совета по другим городам :(')
     else:
         bot.send_message(message.chat.id, text="Не понял тебя. Выбери город из меню и все будет чики-пуки")
+
+
 bot.polling(none_stop=True)
 
 
