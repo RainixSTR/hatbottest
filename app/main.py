@@ -1,47 +1,53 @@
-import subprocess
-import time
-import unittest
-import re
+import telebot
 import requests
+from bs4 import BeautifulSoup
 
-from app import main
+
+# парсинг сайта с погодой
+def get_data(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.content, 'html.parser')
+    data = soup.find('span', {'class': 'value colorize-server-side'}).text[:-1]
+    return data
 
 
-class BotTests(unittest.TestCase):
-
-    def test_get_data(self):
-        pattern = re.compile("[-, +]?[0-9]+(.[0-9]+)?")
-
-        url_1 = 'https://www.meteoservice.ru/weather/overview/moskva'
-        data_1 = main.get_data(url_1)
-        response = requests.get(url_1)
-        self.assertEqual(response.status_code, 200)
-
-        url_2 = 'https://www.meteoservice.ru/weather/overview/sankt-peterburg'
-        data_2 = main.get_data(url_2)
-        response = requests.get(url_1)
-        self.assertEqual(response.status_code, 200)
-
-        self.assertIsNotNone(pattern.fullmatch(data_1))
-        self.assertIsNotNone(pattern.fullmatch(data_2))
-
-    def test_get_advice(self):
-        url_1 = 'https://www.meteoservice.ru/weather/overview/moskva'
-        advice_1 = main.get_advice(url_1)
-        response = requests.get(url_1)
-        self.assertEqual(response.status_code, 200)
-
-        url_2 = 'https://www.meteoservice.ru/weather/overview/sankt-peterburg'
-        advice_2 = main.get_advice(url_2)
-        response = requests.get(url_1)
-        self.assertEqual(response.status_code, 200)
-
-        self.assertEqual('Тепло! Можно походить без шапочки ;)', advice_1)
-        self.assertEqual('Думаю, сегодня точно стоит надеть шапку', advice_2)
+# генерация совета
+def get_advice(url):
+    temp = int(get_data(url))
+    if temp <= -6:
+        predict = 'Думаю, сегодня точно стоит надеть шапку'
+    elif temp <= -2:
+        predict = 'Пока терпимо, но тут уже смотри сам'
+    else:
+        predict = 'Тепло! Можно походить без шапочки ;)'
+    return predict
 
 
 if __name__ == '__main__':
-    p = subprocess.Popen(["python", "./app/main.py"])
-    time.sleep(3)
-    unittest.main()
-    p.terminate()
+
+    bot = telebot.TeleBot('5607061999:AAHJMd0sdmwHf7VumXkoMEt1vfXQS4JkUpQ')
+
+    # генерация кнопочного меню в чате и отправка приветствия
+    @bot.message_handler(commands=['start'])
+    def start(message):
+        keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+        key_moscow = telebot.types.KeyboardButton(text='Москва')
+        key_saint = telebot.types.KeyboardButton(text='Питер')
+        key_other = telebot.types.KeyboardButton(text='Другой')
+        keyboard.add(key_moscow, key_saint, key_other)
+        bot.send_message(message.chat.id, text='Привет! Выбери город из списка', reply_markup=keyboard)
+
+    # обработка введенных пользователем данных
+    @bot.message_handler(content_types=['text'])
+    def func(message):
+        if message.text == "Москва":
+            bot.send_message(message.chat.id, text=get_advice('https://www.meteoservice.ru/weather/overview/moskva'))
+        elif message.text == "Питер":
+            bot.send_message(message.chat.id,
+                             text=get_advice('https://www.meteoservice.ru/weather/overview/sankt-peterburg'))
+        elif message.text == "Другой":
+            bot.send_message(message.chat.id, text='Извини. Пока мало компетенций для совета по другим городам :(')
+        else:
+            bot.send_message(message.chat.id, text="Не понял тебя. Выбери город из меню и все будет чики-пуки")
+
+    bot.polling(none_stop=True)
